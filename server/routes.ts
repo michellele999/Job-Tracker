@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertProspectSchema, STATUSES, INTEREST_LEVELS } from "@shared/schema";
+import { insertProspectSchema } from "@shared/schema";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -35,25 +35,20 @@ export async function registerRoutes(
     const body = req.body;
     const updates: Record<string, unknown> = {};
 
-    if (body.companyName !== undefined) updates.companyName = body.companyName;
-    if (body.roleTitle !== undefined) updates.roleTitle = body.roleTitle;
-    if (body.jobUrl !== undefined) updates.jobUrl = body.jobUrl;
-    if (body.notes !== undefined) updates.notes = body.notes;
-
-    if (body.status !== undefined) {
-      if (!STATUSES.includes(body.status)) {
-        return res.status(400).json({ message: `Status must be one of: ${STATUSES.join(", ")}` });
-      }
-      updates.status = body.status;
+    const patchSchema = insertProspectSchema.partial();
+    const parsed = patchSchema.safeParse(body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: parsed.error.errors.map((e) => e.message).join(", ") });
     }
 
-    if (body.interestLevel !== undefined || body.interest_level !== undefined) {
-      const level = body.interestLevel ?? body.interest_level;
-      if (!INTEREST_LEVELS.includes(level)) {
-        return res.status(400).json({ message: `Interest level must be one of: ${INTEREST_LEVELS.join(", ")}` });
-      }
-      updates.interestLevel = level;
-    }
+    const validFields = parsed.data;
+    if (validFields.companyName !== undefined) updates.companyName = validFields.companyName;
+    if (validFields.roleTitle !== undefined) updates.roleTitle = validFields.roleTitle;
+    if (validFields.jobUrl !== undefined) updates.jobUrl = validFields.jobUrl;
+    if (validFields.targetSalary !== undefined) updates.targetSalary = validFields.targetSalary;
+    if (validFields.notes !== undefined) updates.notes = validFields.notes;
+    if (validFields.status !== undefined) updates.status = validFields.status;
+    if (validFields.interestLevel !== undefined) updates.interestLevel = validFields.interestLevel;
 
     const updated = await storage.updateProspect(id, updates);
     res.json(updated);
