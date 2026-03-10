@@ -21,3 +21,6 @@ describe("prospect creation validation", () => {
     expect(result.errors).toContain("Role title is required");
   });
 });
+test git sync
+
+
